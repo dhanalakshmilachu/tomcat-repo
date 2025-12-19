@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        AWS_DEFAULT_REGION = "eu-north-1"
         TF = "C:\\Program Files\\terraform\\terraform.exe"
     }
 
@@ -16,23 +15,13 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                withCredentials([
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]) {
-                    bat "\"%TF%\" init"
-                }
+                bat "\"%TF%\" init"
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                withCredentials([
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]) {
-                    bat "\"%TF%\" apply -auto-approve"
-                }
+                bat "\"%TF%\" apply -auto-approve"
             }
         }
 
@@ -44,8 +33,10 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
+                    echo "================================"
                     echo "EC2 Public IP: ${ip}"
-                    echo "URL: http://${ip}:8080/sample/"
+                    echo "URL: http://${ip}:8080/"
+                    echo "================================"
                 }
             }
         }
