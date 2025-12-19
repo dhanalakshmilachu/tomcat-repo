@@ -36,7 +36,7 @@ resource "aws_instance" "tomcat_ec2" {
   user_data = file("userdata.sh")
 
   tags = {
-    Name = "Tomcat-Docker-EC2"
+    Name = "Tomcat-EC2"
   }
 }
 
