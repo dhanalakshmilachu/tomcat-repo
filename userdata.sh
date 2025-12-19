@@ -1,19 +1,25 @@
 #!/bin/bash
-# Update system
-apt update -y
+# Update OS
+yum update -y
 
-# Install Docker
-apt install docker.io -y
-systemctl start docker
-systemctl enable docker
+# Install Java
+amazon-linux-extras install java-openjdk11 -y
 
-# Add ubuntu user to docker group to avoid permission issues
-usermod -aG docker ubuntu
+# Install wget
+yum install wget -y
 
-# Pull pre-built Docker image from Docker Hub
-docker pull dhanalakshmi16/tomcat-app:latest
+# Download Tomcat
+cd /opt
+wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
+tar xvf apache-tomcat-9.0.84.tar.gz
+mv apache-tomcat-9.0.84 tomcat9
 
-# Run container exposing port 8080
-docker run -d -p 8080:8080 dhanalakshmi16/tomcat-app:latest
+# Download sample.war as ROOT.war
+wget https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war -O /opt/tomcat9/webapps/ROOT.war
 
+# Set permissions
+chmod +x /opt/tomcat9/bin/*.sh
+
+# Start Tomcat
+/opt/tomcat9/bin/startup.sh
 
