@@ -1,9 +1,9 @@
 #!/bin/bash
 # Update system
 apt update -y
-apt install openjdk-21-jdk wget -y
+apt install openjdk-11-jdk wget -y
 
-# Download Tomcat
+# Download and install Tomcat
 cd /opt
 wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
 tar xvf apache-tomcat-9.0.84.tar.gz
