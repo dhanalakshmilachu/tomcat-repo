@@ -2,49 +2,70 @@ pipeline {
     agent any
 
     environment {
-        AWS_DEFAULT_REGION = "eu-north-1"
-        TF = "C:\\Program Files\\terraform\\terraform.exe"
+        TERRAFORM_PATH = '"C:\\Program Files\\terraform\\terraform.exe"'
     }
 
     stages {
-        stage('Checkout Code') {
+
+        stage('Checkout SCM') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/dhanalakshmilachu/tomcat-repo.git'
             }
         }
 
         stage('Terraform Init') {
             steps {
-                bat "\"%TF%\" init"
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    bat "${env.TERRAFORM_PATH} init"
+                }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                withEnv([
-                    "AWS_ACCESS_KEY_ID=${credentials('aws-creds')}",         // AWS Access Key ID
-                    "AWS_SECRET_ACCESS_KEY=${credentials('aws-secret-key')}" // AWS Secret Key
-                ]) {
-                    bat "\"%TF%\" plan"
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    bat "${env.TERRAFORM_PATH} plan"
                 }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                withEnv([
-                    "AWS_ACCESS_KEY_ID=${credentials('aws-creds')}",
-                    "AWS_SECRET_ACCESS_KEY=${credentials('aws-secret-key')}"
-                ]) {
-                    bat "\"%TF%\" apply -auto-approve"
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    bat "${env.TERRAFORM_PATH} apply -auto-approve"
                 }
             }
         }
 
         stage('Show EC2 Public IP') {
             steps {
-                bat "\"%TF%\" output"
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    script {
+                        // Replace this command with how you output EC2 public IP
+                        bat "${env.TERRAFORM_PATH} output public_ip"
+                    }
+                }
             }
+        }
+
+    }
+
+    post {
+        failure {
+            echo "Pipeline failed! Check credentials and Terraform configuration."
         }
     }
 }
