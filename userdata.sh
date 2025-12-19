@@ -10,9 +10,10 @@ systemctl enable docker
 # Add ubuntu user to docker group to avoid permission issues
 usermod -aG docker ubuntu
 
-# Pull Docker image from Docker Hub
-docker pull your-dockerhub-username/tomcat-app:latest
+# Pull pre-built Docker image from Docker Hub
+docker pull dhanalakshmi16/tomcat-app:latest
 
 # Run container exposing port 8080
-docker run -d -p 8080:8080 your-dockerhub-username/tomcat-app:latest
+docker run -d -p 8080:8080 dhanalakshmi16/tomcat-app:latest
+
 
