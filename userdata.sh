@@ -1,32 +1,44 @@
 #!/bin/bash
-# 1. Update packages and install dependencies
+set -euxo pipefail
+
+# Log everything
+exec > /var/log/userdata.log 2>&1
+
+echo "===== USERDATA STARTED ====="
+
+# Update system
 apt update -y
-apt install -y openjdk-11-jdk wget net-tools
 
-# 2. Set JAVA_HOME and update PATH
-echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /etc/profile.d/java.sh
-echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh
-chmod +x /etc/profile.d/java.sh
-source /etc/profile.d/java.sh
+# Install Java, wget, ca-certificates
+apt install -y openjdk-11-jdk wget ca-certificates tar
 
-# 3. Download and install Tomcat 9
+# Verify Java
+java -version
+
+# Go to /opt
 cd /opt
-wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
-tar -xvf apache-tomcat-9.0.84.tar.gz
-mv apache-tomcat-9.0.84 tomcat9
+
+# Download Tomcat 9
+wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.113/bin/apache-tomcat-9.0.113.tar.gz
+
+# Extract Tomcat
+tar -xvf apache-tomcat-9.0.113.tar.gz
+
+# Rename directory
+mv apache-tomcat-9.0.113.tar.gz tomcat
+chown -R ubuntu:ubuntu /opt/tomcat
+# Make scripts executable
 chmod +x /opt/tomcat9/bin/*.sh
 
-# 4. Download sample.war as ROOT.war
-wget https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war -O /opt/tomcat9/webapps/ROOT.war
+# Remove default apps
+rm -rf /opt/tomcat9/webapps/*
 
-# 5. Start Tomcat in background and redirect logs
-/opt/tomcat9/bin/startup.sh >> /var/log/tomcat_startup.log 2>&1
+# Download sample.war as ROOT.war
+wget https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war \
+     -O /opt/tomcat9/webapps/ROOT.war
 
-# 6. Wait to ensure Tomcat starts
-sleep 15
+# Start Tomcat
+/opt/tomcat9/bin/startup.sh
 
-# 7. Print completion message
-echo "Tomcat installation completed. Access the app at http://<EC2_PUBLIC_IP>:8080/"
-
-
+echo "===== USERDATA COMPLETED ====="
 
