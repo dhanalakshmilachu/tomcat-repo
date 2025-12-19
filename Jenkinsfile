@@ -3,59 +3,33 @@ pipeline {
 
     environment {
         TERRAFORM_PATH = '"C:\\Program Files\\terraform\\terraform.exe"'
+        DOCKER_IMAGE   = "dhanalakshmi16/tomcat-app:latest"
     }
 
     stages {
 
-        stage('Checkout SCM') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/dhanalakshmilachu/tomcat-repo.git'
-            }
-        }
-
         stage('Terraform Init') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                     bat "${env.TERRAFORM_PATH} init"
-                }
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
-                    bat "${env.TERRAFORM_PATH} plan"
                 }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                     bat "${env.TERRAFORM_PATH} apply -auto-approve"
                 }
             }
         }
 
-        stage('Show EC2 Public IP') {
+        stage('Show EC2 Public URL') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                     script {
-                        // Replace this command with how you output EC2 public IP
-                        bat "${env.TERRAFORM_PATH} output public_ip"
+                        def ip = bat(script: "${env.TERRAFORM_PATH} output -raw public_ip", returnStdout: true).trim()
+                        echo "Your Tomcat app is live at: http://${ip}:8080/sample/"
                     }
                 }
             }
@@ -64,8 +38,11 @@ pipeline {
     }
 
     post {
+        success {
+            echo "Pipeline completed successfully! Your app URL is above."
+        }
         failure {
-            echo "Pipeline failed! Check credentials and Terraform configuration."
+            echo "Pipeline failed! Check AWS credentials and security group."
         }
     }
 }
