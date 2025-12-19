@@ -1,16 +1,18 @@
 #!/bin/bash
+# Update system
 apt update -y
+
+# Install Docker
 apt install docker.io -y
 systemctl start docker
 systemctl enable docker
 
-# Clone repo
-cd /home/ubuntu
-git clone https://github.com/dhanalakshmilachu/tomcat-repo.git
+# Add ubuntu user to docker group to avoid permission issues
+usermod -aG docker ubuntu
 
-# Build Docker image
-docker build -t tomcat-app ./tomcat-repo
+# Pull Docker image from Docker Hub
+docker pull your-dockerhub-username/tomcat-app:latest
 
-# Run container mapping port 8080
-docker run -d -p 8080:8080 tomcat-app
+# Run container exposing port 8080
+docker run -d -p 8080:8080 your-dockerhub-username/tomcat-app:latest
 
