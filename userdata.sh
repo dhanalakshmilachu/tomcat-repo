@@ -1,68 +1,64 @@
 #!/bin/bash
 set -e
 
-# Log everything
 exec > /var/log/userdata.log 2>&1
-echo "Starting userdata script..."
 
-# Update packages
+echo "=== Installing Java ==="
 apt update -y
+apt install -y openjdk-11-jdk curl wget
 
-# Install Java 11 and wget
-apt install -y openjdk-11-jdk wget curl
-
-# Create a dedicated tomcat user
-useradd -m -U -d /opt/tomcat -s /bin/false tomcat
-
-# Download Tomcat 9
+echo "=== Installing Tomcat ==="
 cd /tmp
 wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
-
-# Extract to /opt/tomcat
-mkdir -p /opt/tomcat
-tar -xzf apache-tomcat-9.0.84.tar.gz -C /opt/tomcat --strip-components=1
-
-# Set ownership and permissions
-chown -R tomcat:tomcat /opt/tomcat
+tar -xzf apache-tomcat-9.0.84.tar.gz
+mv apache-tomcat-9.0.84 /opt/tomcat
 chmod +x /opt/tomcat/bin/*.sh
 
-# Create systemd service for Tomcat
-cat <<EOF >/etc/systemd/system/tomcat.service
-[Unit]
-Description=Apache Tomcat Web Application Container
-After=network.target
+echo "=== Starting Tomcat ==="
+/opt/tomcat/bin/startup.sh
 
-[Service]
-Type=forking
-User=tomcat
-Group=tomcat
-Environment=JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-Environment=CATALINA_HOME=/opt/tomcat
-Environment=CATALINA_BASE=/opt/tomcat
-ExecStart=/opt/tomcat/bin/startup.sh
-ExecStop=/opt/tomcat/bin/shutdown.sh
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Reload systemd and start Tomcat
-systemctl daemon-reexec
-systemctl daemon-reload
-systemctl enable tomcat
-systemctl start tomcat
-
-# Wait a few seconds for Tomcat to fully start
 sleep 15
 
-# Deploy sample.war
-cd /opt/tomcat/webapps
-wget -O sample.war https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war
-chown tomcat:tomcat sample.war
+echo "=== Installing Docker ==="
+apt install -y ca-certificates gnupg lsb-release
 
-# Restart Tomcat to deploy WAR
-systemctl restart tomcat
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-echo "Userdata script completed successfully"
+echo \
+"deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+> /etc/apt/sources.list.d/docker.list
+
+apt update -y
+apt install -y docker-ce docker-ce-cli containerd.io
+systemctl start docker
+systemctl enable docker
+
+echo "=== Building Docker image containing WAR ==="
+mkdir -p /opt/war-source
+cd /opt/war-source
+
+cat <<'EOF' > Dockerfile
+FROM tomcat:8.5-jdk11
+RUN rm -rf /usr/local/tomcat/webapps/*
+RUN curl -fSL -o /sample.war \
+https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war
+EOF
+
+docker build -t war-image .
+
+echo "=== Extracting WAR from Docker ==="
+docker create --name war-container war-image
+docker cp war-container:/sample.war /opt/tomcat/webapps/sample.war
+docker rm war-container
+
+echo "=== Restarting Tomcat ==="
+/opt/tomcat/bin/shutdown.sh || true
+sleep 5
+/opt/tomcat/bin/startup.sh
+
+echo "=== DONE ==="
+
 
