@@ -1,29 +1,28 @@
 #!/bin/bash
 set -e
 
-# Log everything for debugging
+# Log everything
 exec > /var/log/userdata.log 2>&1
-
 echo "Starting userdata script..."
 
-# Update system
+# Update packages
 apt update -y
 
-# Install Java 11
-apt install -y openjdk-11-jdk wget
+# Install Java 11 and wget
+apt install -y openjdk-11-jdk wget curl
 
-# Create tomcat user
+# Create a dedicated tomcat user
 useradd -m -U -d /opt/tomcat -s /bin/false tomcat
 
 # Download Tomcat 9
 cd /tmp
 wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.84/bin/apache-tomcat-9.0.84.tar.gz
 
-# Extract Tomcat
+# Extract to /opt/tomcat
 mkdir -p /opt/tomcat
 tar -xzf apache-tomcat-9.0.84.tar.gz -C /opt/tomcat --strip-components=1
 
-# Set permissions
+# Set ownership and permissions
 chown -R tomcat:tomcat /opt/tomcat
 chmod +x /opt/tomcat/bin/*.sh
 
@@ -48,20 +47,18 @@ Restart=on-failure
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd
+# Reload systemd and start Tomcat
 systemctl daemon-reexec
 systemctl daemon-reload
-
-# Start Tomcat
 systemctl enable tomcat
 systemctl start tomcat
 
-# Wait for Tomcat to fully start
-sleep 20
+# Wait a few seconds for Tomcat to fully start
+sleep 15
 
-# Deploy sample WAR
+# Deploy sample.war
 cd /opt/tomcat/webapps
-wget https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war
+wget -O sample.war https://tomcat.apache.org/tomcat-8.5-doc/appdev/sample/sample.war
 chown tomcat:tomcat sample.war
 
 # Restart Tomcat to deploy WAR
